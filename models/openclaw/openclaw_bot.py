@@ -63,7 +63,7 @@ class OpenClawBot(Bot):
 
             # 执行 openclaw agent
             logger.info(f"[OpenClawBot] 用户 {user_id} 执行命令，工作目录: {work_dir}")
-            output = self._execute_openclaw(full_prompt, work_dir)
+            output = self._execute_openclaw(full_prompt, work_dir, user_id)
 
             # 保存到历史
             history.append({"role": "user", "content": query})
@@ -161,23 +161,28 @@ class OpenClawBot(Bot):
         context_parts.append(f"\n用户: {new_query}")
         return "\n".join(context_parts)
 
-    def _execute_openclaw(self, prompt: str, work_dir: str) -> str:
+    def _execute_openclaw(self, prompt: str, work_dir: str, user_id: str) -> str:
         """执行 openclaw agent 命令"""
         env = os.environ.copy()
 
         # 设置 Node 路径
         env["PATH"] = f"{os.path.dirname(self.node_path)}:{env.get('PATH', '')}"
 
-        # 构建命令 - 使用 openclaw agent
+        # 为每个用户生成唯一的 session_id
+        session_id = f"weixin-{user_id}"
+
+        # 构建命令 - 使用 openclaw agent --local 模式（不需要 Gateway）
         cmd = [
             self.node_path,
             f"{self.openclaw_path}/openclaw.mjs",
             "agent",
+            "--local",  # 使用本地模式，不需要 Gateway
+            "--session-id", session_id,
             "--message", prompt,
             "--thinking", "low"
         ]
 
-        logger.debug(f"[OpenClawBot] 执行命令: {' '.join(cmd[:4])}...")
+        logger.debug(f"[OpenClawBot] 执行命令: {' '.join(cmd[:5])}...")
 
         result = subprocess.run(
             cmd,
