@@ -16,6 +16,7 @@ MiniMax = "minimax"
 DEEPSEEK = "deepseek"
 MODELSCOPE = "modelscope"
 CLAUDECODE = "claudecode"
+OPENCLAW = "openclaw"
 
 # 模型列表
 # Claude (Anthropic)

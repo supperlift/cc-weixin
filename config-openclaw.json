@@ -1,0 +1,14 @@
+{
+  "channel_type": "weixin",
+  "bot_type": "openclaw",
+  "openclaw_work_dir": "/Users/mac/Documents/www/cc-weixin",
+  "openclaw_timeout": 300,
+  "openclaw_max_history": 20,
+  "openclaw_max_output_length": 3500,
+  "openclaw_path": "/Users/mac/Documents/www/openclaw-ai/openclaw",
+  "openclaw_node_path": "/Users/mac/.nvm/versions/node/v22.22.1/bin/node",
+  "single_chat_prefix": [""],
+  "group_chat_prefix": ["@bot"],
+  "agent": false,
+  "web_console": false
+}

@@ -76,4 +76,8 @@ def create_bot(bot_type):
         from models.claudecode.claude_code_bot import ClaudeCodeBot
         return ClaudeCodeBot()
 
+    elif bot_type == const.OPENCLAW:
+        from models.openclaw.openclaw_bot import OpenClawBot
+        return OpenClawBot()
+
     raise RuntimeError
