@@ -1,3 +1,14 @@
+# CC-Weixin
+
+> **基于项目**: 本项目基于 [chatgpt-on-wechat](https://github.com/zhayujie/chatgpt-on-wechat) 开发，在原有框架基础上扩展了以下功能：
+> - **ClaudeCodeBot**: 通过微信控制本机 Claude Code CLI
+> - **OpenClawBot**: 通过微信控制 OpenClaw AI Assistant
+> - **RouterBot**: 运行时无缝切换多个 AI Bot（无需重启）
+>
+> 感谢原项目作者 [@zhayujie](https://github.com/zhayujie) 提供的优秀框架。
+
+---
+
 <p align="center"><img src= "https://github.com/user-attachments/assets/eca9a9ec-8534-4615-9e0f-96c5ac1d10a3" alt="Chatgpt-on-Wechat" width="550" /></p>
 
 <p align="center">
