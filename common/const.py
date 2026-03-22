@@ -17,6 +17,7 @@ DEEPSEEK = "deepseek"
 MODELSCOPE = "modelscope"
 CLAUDECODE = "claudecode"
 OPENCLAW = "openclaw"
+ROUTER = "router"
 
 # 模型列表
 # Claude (Anthropic)

@@ -80,4 +80,8 @@ def create_bot(bot_type):
         from models.openclaw.openclaw_bot import OpenClawBot
         return OpenClawBot()
 
+    elif bot_type == const.ROUTER:
+        from models.router.router_bot import RouterBot
+        return RouterBot()
+
     raise RuntimeError

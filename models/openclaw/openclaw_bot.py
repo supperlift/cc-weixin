@@ -175,6 +175,7 @@ class OpenClawBot(Bot):
         cmd = [
             self.node_path,
             f"{self.openclaw_path}/openclaw.mjs",
+            "--no-color",
             "agent",
             "--local",  # 使用本地模式，不需要 Gateway
             "--session-id", session_id,
@@ -193,7 +194,17 @@ class OpenClawBot(Bot):
             env=env
         )
 
-        output = result.stdout.strip()
+        import re
+        raw_output = result.stdout.strip()
+        # 过滤掉插件注册日志行和 ANSI 颜色代码
+        lines = raw_output.splitlines()
+        clean_lines = [
+            line for line in lines
+            if not line.startswith("[plugins]") and "Registered" not in line
+        ]
+        # 去除 ANSI 转义码
+        ansi_escape = re.compile(r'\x1b\[[0-9;]*m')
+        output = ansi_escape.sub('', '\n'.join(clean_lines)).strip()
         error = result.stderr.strip()
 
         if result.returncode != 0:
