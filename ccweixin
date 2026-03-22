@@ -1,0 +1,108 @@
+#!/bin/bash
+# cc-weixin 服务管理命令
+
+SCRIPT_DIR="/Users/mac/Documents/www/cc-weixin/scripts"
+PLIST_FILE="$SCRIPT_DIR/com.ccweixin.plist"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/com.ccweixin.plist"
+
+case "$1" in
+    start)
+        if launchctl list | grep -q "com.ccweixin"; then
+            echo "❌ 服务已在运行"
+            exit 1
+        fi
+        echo "🚀 启动 cc-weixin 服务..."
+        launchctl load "$LAUNCHD_PLIST"
+        sleep 2
+        if launchctl list | grep -q "com.ccweixin"; then
+            echo "✅ 服务启动成功"
+        else
+            echo "❌ 服务启动失败"
+            exit 1
+        fi
+        ;;
+    
+    stop)
+        if ! launchctl list | grep -q "com.ccweixin"; then
+            echo "❌ 服务未运行"
+            exit 1
+        fi
+        echo "🛑 停止 cc-weixin 服务..."
+        launchctl unload "$LAUNCHD_PLIST"
+        echo "✅ 服务已停止"
+        ;;
+    
+    restart)
+        echo "🔄 重启 cc-weixin 服务..."
+        if launchctl list | grep -q "com.ccweixin"; then
+            launchctl unload "$LAUNCHD_PLIST"
+            sleep 1
+        fi
+        launchctl load "$LAUNCHD_PLIST"
+        sleep 2
+        if launchctl list | grep -q "com.ccweixin"; then
+            echo "✅ 服务重启成功"
+        else
+            echo "❌ 服务重启失败"
+            exit 1
+        fi
+        ;;
+    
+    status)
+        if launchctl list | grep -q "com.ccweixin"; then
+            echo "✅ 服务运行中"
+            launchctl list | grep "com.ccweixin"
+            echo ""
+            echo "📝 日志文件:"
+            echo "  stdout: /Users/mac/Documents/www/cc-weixin/logs/stdout.log"
+            echo "  stderr: /Users/mac/Documents/www/cc-weixin/logs/stderr.log"
+        else
+            echo "❌ 服务未运行"
+            exit 1
+        fi
+        ;;
+    
+    logs)
+        echo "📝 实时日志 (Ctrl+C 退出):"
+        tail -f /Users/mac/Documents/www/cc-weixin/logs/stdout.log
+        ;;
+    
+    install)
+        echo "📦 安装 cc-weixin 开机自启..."
+        mkdir -p "$HOME/Library/LaunchAgents"
+        cp "$PLIST_FILE" "$LAUNCHD_PLIST"
+        launchctl load "$LAUNCHD_PLIST"
+        echo "✅ 安装完成，服务已启动并设置为开机自启"
+        ;;
+    
+    uninstall)
+        echo "🗑️  卸载 cc-weixin 开机自启..."
+        if launchctl list | grep -q "com.ccweixin"; then
+            launchctl unload "$LAUNCHD_PLIST"
+        fi
+        rm -f "$LAUNCHD_PLIST"
+        echo "✅ 卸载完成"
+        ;;
+    
+    *)
+        echo "cc-weixin 服务管理工具"
+        echo ""
+        echo "用法: ./ccweixin <命令>"
+        echo ""
+        echo "命令:"
+        echo "  install   - 安装并启动服务（开机自启）"
+        echo "  uninstall - 卸载服务"
+        echo "  start     - 启动服务"
+        echo "  stop      - 停止服务"
+        echo "  restart   - 重启服务"
+        echo "  status    - 查看服务状态"
+        echo "  logs      - 查看实时日志"
+        echo ""
+        echo "示例:"
+        echo "  ./ccweixin install   # 首次安装"
+        echo "  ./ccweixin start     # 启动服务"
+        echo "  ./ccweixin stop      # 停止服务"
+        echo "  ./ccweixin status    # 查看状态"
+        exit 1
+        ;;
+esac

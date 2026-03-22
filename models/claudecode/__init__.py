@@ -1,0 +1,1 @@
+# Claude Code Bot Module
