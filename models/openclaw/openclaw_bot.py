@@ -42,8 +42,47 @@ class OpenClawBot(Bot):
         self.openclaw_path = conf().get("openclaw_path", "/Users/mac/Documents/www/openclaw-ai/openclaw")
         self.node_path = conf().get("openclaw_node_path", "/Users/mac/.nvm/versions/node/v22.22.1/bin/node")
 
+        # 加载进度消息配置
+        self.progress_messages = self._load_progress_messages()
+
         logger.info(f"[OpenClawBot] 初始化完成，默认工作目录: {self.default_work_dir}")
         logger.info(f"[OpenClawBot] OpenClaw 路径: {self.openclaw_path}")
+
+    def _load_progress_messages(self) -> Dict[str, str]:
+        """加载进度消息配置"""
+        messages = {}
+        config_file = os.path.join(os.path.dirname(__file__), "progress_messages.txt")
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        msg_id, content = line.split('=', 1)
+                        messages[msg_id.strip()] = content.strip()
+            logger.info(f"[OpenClawBot] 加载了 {len(messages)} 条进度消息")
+        except Exception as e:
+            logger.error(f"[OpenClawBot] 加载进度消息失败: {e}")
+            messages['0000'] = "⏳ 任务执行中，请稍候..."
+        return messages
+
+    def _get_progress_message(self, minute: int, suite: int = 1) -> str:
+        """获取进度消息
+
+        Args:
+            minute: 第几分钟（1-9）
+            suite: 消息套装编号（默认1）
+
+        Returns:
+            进度消息内容，如果为空字符串表示不发送消息
+        """
+        msg_id = f"00{suite}{minute}"
+        message = self.progress_messages.get(msg_id)
+
+        # 如果没找到，使用默认消息
+        if message is None:
+            message = self.progress_messages.get('0000', '⏳ 任务执行中，请稍候...')
+
+        return message
 
     def reply(self, query: str, context: Context = None) -> Reply:
         """处理用户消息"""
@@ -125,36 +164,21 @@ class OpenClawBot(Bot):
 
         # 启动进度监控线程
         completed = {"value": False}
-        progress_count = {"value": 0}  # 记录发送了多少次进度消息
+        progress_count = {"value": 1}  # 从第1分钟开始计数
 
         def monitor_progress():
             """监控进度，超过1分钟未完成时发送提示"""
             time.sleep(self.progress_interval)  # 等待第一个间隔（60秒）
 
-            # 不同阶段的进度消息
-            progress_messages = [
-                "等一下，我还没干完",      # 第1分钟
-                "有点难啊🥹",              # 第2分钟
-                None,                        # 第3分钟（不发送）
-                "😭，要干不完了",          # 第4分钟
-                "⏳ 任务执行中，请稍候...", # 第5分钟
-                "😠，爷不干了！"           # 第6分钟
-            ]
-
             while not completed["value"]:
                 # 获取当前应该发送的消息
-                message = None
-                if progress_count["value"] < len(progress_messages):
-                    message = progress_messages[progress_count["value"]]
-                else:
-                    # 超过6分钟后，每分钟发送固定消息
-                    message = "⏳ 任务执行中，请稍候..."
+                message = self._get_progress_message(progress_count["value"])
 
-                # 发送进度提示（如果消息不为 None）
+                # 发送进度提示（如果消息不为空）
                 if message:
                     try:
                         self._send_message(context, message)
-                        logger.info(f"[OpenClawBot] 发送进度提示: {user_id} - {message}")
+                        logger.info(f"[OpenClawBot] 发送进度提示: {user_id} - 第{progress_count['value']}分钟 - {message}")
                     except Exception as e:
                         logger.error(f"[OpenClawBot] 发送进度失败: {e}")
 
