@@ -71,11 +71,14 @@ class OpenClawBot(Bot):
             # 构建完整 prompt
             full_prompt = self._build_prompt(history, query)
 
-            # 启动异步执行
+            # 启动异步执行（静默执行，不立即回复）
             logger.info(f"[OpenClawBot] 用户 {user_id} 执行命令，工作目录: {work_dir}")
             self._execute_openclaw_async(full_prompt, work_dir, user_id, context)
 
-            return Reply(ReplyType.TEXT, "🚀 任务已开始执行，我会每分钟向你报告进度...")
+            # 不返回任何内容，让任务在后台静默执行
+            # - 如果1分钟内完成，直接发送结果（无进度提示）
+            # - 超过1分钟，发送"任务执行中"提示，之后每分钟重复
+            return None
 
         except Exception as e:
             logger.error(f"[OpenClawBot] 执行失败: {e}", exc_info=True)
@@ -187,23 +190,29 @@ class OpenClawBot(Bot):
         thread.start()
 
     def _send_progress_updates(self, user_id: str, context: Context, start_time: float):
-        """定时发送进度更新"""
+        """定时发送进度更新（仅当任务超过1分钟时）"""
         try:
+            # 等待第一个间隔（60秒）
+            time.sleep(self.progress_interval)
+
+            # 检查任务是否已完成（简单任务在1分钟内完成，不发送进度）
+            if user_id not in self.running_tasks or self.running_tasks[user_id]["completed"]:
+                return
+
+            # 任务超过1分钟，开始发送进度更新
             while user_id in self.running_tasks and not self.running_tasks[user_id]["completed"]:
-                time.sleep(self.progress_interval)
-
-                if user_id not in self.running_tasks or self.running_tasks[user_id]["completed"]:
-                    break
-
-                elapsed = int(time.time() - start_time)
-                minutes = elapsed // 60
-                seconds = elapsed % 60
-
-                progress_msg = f"⏳ 任务执行中... 已运行 {minutes}分{seconds}秒"
+                progress_msg = "⏳ 任务执行中，请稍候..."
 
                 # 发送进度消息
                 self._send_message(context, progress_msg)
-                logger.info(f"[OpenClawBot] 发送进度更新: {user_id} - {progress_msg}")
+                logger.info(f"[OpenClawBot] 发送进度更新: {user_id}")
+
+                # 等待下一个间隔
+                time.sleep(self.progress_interval)
+
+                # 再次检查任务状态
+                if user_id not in self.running_tasks or self.running_tasks[user_id]["completed"]:
+                    break
 
         except Exception as e:
             logger.error(f"[OpenClawBot] 进度推送失败: {e}", exc_info=True)
