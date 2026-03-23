@@ -125,18 +125,40 @@ class OpenClawBot(Bot):
 
         # 启动进度监控线程
         completed = {"value": False}
+        progress_count = {"value": 0}  # 记录发送了多少次进度消息
 
         def monitor_progress():
             """监控进度，超过1分钟未完成时发送提示"""
             time.sleep(self.progress_interval)  # 等待第一个间隔（60秒）
 
+            # 不同阶段的进度消息
+            progress_messages = [
+                "等一下，我还没干完",      # 第1分钟
+                "有点难啊🥹",              # 第2分钟
+                None,                        # 第3分钟（不发送）
+                "😭，要干不完了",          # 第4分钟
+                "⏳ 任务执行中，请稍候...", # 第5分钟
+                "😠，爷不干了！"           # 第6分钟
+            ]
+
             while not completed["value"]:
-                # 发送进度提示
-                try:
-                    self._send_message(context, "⏳ 任务执行中，请稍候...")
-                    logger.info(f"[OpenClawBot] 发送进度提示: {user_id}")
-                except Exception as e:
-                    logger.error(f"[OpenClawBot] 发送进度失败: {e}")
+                # 获取当前应该发送的消息
+                message = None
+                if progress_count["value"] < len(progress_messages):
+                    message = progress_messages[progress_count["value"]]
+                else:
+                    # 超过6分钟后，每分钟发送固定消息
+                    message = "⏳ 任务执行中，请稍候..."
+
+                # 发送进度提示（如果消息不为 None）
+                if message:
+                    try:
+                        self._send_message(context, message)
+                        logger.info(f"[OpenClawBot] 发送进度提示: {user_id} - {message}")
+                    except Exception as e:
+                        logger.error(f"[OpenClawBot] 发送进度失败: {e}")
+
+                progress_count["value"] += 1
 
                 # 等待下一个间隔
                 time.sleep(self.progress_interval)
