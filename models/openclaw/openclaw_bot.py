@@ -222,11 +222,11 @@ class OpenClawBot(Bot):
     def _send_message(self, context: Context, message: str):
         """发送消息到微信"""
         try:
-            from channel.channel import Channel
-            channel = Channel().get_instance()
-            if channel:
-                reply = Reply(ReplyType.TEXT, message)
-                channel.send(reply, context)
+            from channel.channel_factory import create_channel
+            channel_type = context.get("channel_type", "weixin")
+            channel = create_channel(channel_type)
+            reply = Reply(ReplyType.TEXT, message)
+            channel.send(reply, context)
         except Exception as e:
             logger.error(f"[OpenClawBot] 发送消息失败: {e}", exc_info=True)
 
