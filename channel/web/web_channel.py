@@ -383,6 +383,7 @@ class WebChannel(ChatChannel):
             '/config', 'ConfigHandler',
             '/api/channels', 'ChannelsHandler',
             '/api/weixin/qrlogin', 'WeixinQrHandler',
+            '/api/alert', 'AlertHandler',
             '/api/tools', 'ToolsHandler',
             '/api/skills', 'SkillsHandler',
             '/api/memory', 'MemoryHandler',
@@ -1197,6 +1198,85 @@ def _get_workspace_root():
     """Resolve the agent workspace directory."""
     from common.utils import expand_path
     return expand_path(conf().get("agent_workspace", "~/cow"))
+
+
+class AlertHandler:
+    """接收外部告警消息并通过微信发送给指定用户。
+
+    POST /api/alert
+    Body: {"message": "告警内容", "token": "可选安全token", "to": "可选目标用户ID"}
+
+    - message: 要发送的告警文本（必填）
+    - token: 与配置中 alert_token 匹配时才允许发送（可选，建议生产环境配置）
+    - to: 指定接收用户的 user_id；若不填则发给所有已有 context_token 的用户
+    """
+
+    @staticmethod
+    def _get_weixin_channel():
+        try:
+            import sys
+            app_module = sys.modules.get('__main__') or sys.modules.get('app')
+            mgr = getattr(app_module, '_channel_mgr', None) if app_module else None
+            if mgr:
+                return mgr.get_channel("weixin")
+        except Exception:
+            pass
+        return None
+
+    def POST(self):
+        web.header('Content-Type', 'application/json; charset=utf-8')
+        try:
+            body = json.loads(web.data())
+        except Exception:
+            web.ctx.status = '400 Bad Request'
+            return json.dumps({"status": "error", "message": "invalid JSON"})
+
+        message = body.get("message", "").strip()
+        if not message:
+            web.ctx.status = '400 Bad Request'
+            return json.dumps({"status": "error", "message": "message is required"})
+
+        # 可选安全验证
+        cfg_token = conf().get("alert_token", "")
+        if cfg_token:
+            req_token = body.get("token", "")
+            if req_token != cfg_token:
+                web.ctx.status = '403 Forbidden'
+                return json.dumps({"status": "error", "message": "invalid token"})
+
+        ch = self._get_weixin_channel()
+        if not ch or not getattr(ch, 'api', None):
+            return json.dumps({"status": "error", "message": "weixin channel not ready"})
+
+        target_user = body.get("to", "")
+        context_tokens = getattr(ch, '_context_tokens', {})
+
+        if target_user:
+            users = {target_user: context_tokens.get(target_user, "")}
+        else:
+            users = dict(context_tokens)
+
+        if not users:
+            return json.dumps({"status": "error", "message": "no known users (no context_token available)"})
+
+        sent, failed = [], []
+        for user_id, ctx_token in users.items():
+            if not ctx_token:
+                failed.append({"user": user_id, "reason": "no context_token"})
+                continue
+            try:
+                ch.api.send_text(user_id, message, ctx_token)
+                sent.append(user_id)
+                logger.info(f"[AlertHandler] Alert sent to {user_id}")
+            except Exception as e:
+                failed.append({"user": user_id, "reason": str(e)})
+                logger.error(f"[AlertHandler] Failed to send alert to {user_id}: {e}")
+
+        return json.dumps({
+            "status": "success" if sent else "error",
+            "sent": sent,
+            "failed": failed,
+        }, ensure_ascii=False)
 
 
 class ToolsHandler:
